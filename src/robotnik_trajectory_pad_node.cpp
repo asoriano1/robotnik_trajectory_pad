@@ -46,7 +46,7 @@
 #define DEFAULT_AXIS_ANGULAR		1
 #define DEFAULT_AXIS_LINEAR_Z       1	
 #define DEFAULT_SCALE_LINEAR		1.0
-#define DEFAULT_SCALE_ANGULAR		1.0
+#define DEFAULT_SCALE_ANGULAR		0.05
 #define DEFAULT_SCALE_LINEAR_Z      1.0 
 
 //Used only with ps4
@@ -85,7 +85,7 @@ class RobotnikTrajectoryPad
 	ros::Subscriber pad_sub_;
 	//! Name of the topic where it will be publishing the cartesianeuler moves
 	std::string cartesian_topic_name_;
-	
+
 	double current_step;
 	//! Pad type
 	std::string pad_type_;
@@ -230,8 +230,8 @@ void RobotnikTrajectoryPad::padCallback(const sensor_msgs::Joy::ConstPtr& joy)
 		if ( joy->buttons[speed_down_button_] == 1 ){
 
 			if(!bRegisteredButtonEvent[speed_down_button_]) 
-				if(current_step > 0.1){
-		  			current_step = current_step - 0.1;
+				if(current_step > 0.001){
+		  			current_step = current_step - 0.01;
 					bRegisteredButtonEvent[speed_down_button_] = true;
 					ROS_INFO("Step: %f%%", current_step*100.0);
 					char buf[50]="\0";
@@ -246,7 +246,7 @@ void RobotnikTrajectoryPad::padCallback(const sensor_msgs::Joy::ConstPtr& joy)
 		if (joy->buttons[speed_up_button_] == 1){
 			if(!bRegisteredButtonEvent[speed_up_button_])
 				if(current_step <= 0.9){
-					current_step = current_step + 0.1;
+					current_step = current_step + 0.01;
 					bRegisteredButtonEvent[speed_up_button_] = true;
 			 	 	ROS_INFO("Step: %f%%", current_step*100.0);
   					char buf[50]="\0";
