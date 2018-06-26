@@ -13,6 +13,7 @@ button_dead_man: 5
 button_euler_mode: 4
 button_output_1: 9
 button_output_2: 10
+button_angle_deadman: 6
 output_1: 1 
 output_2: 2
 button_ptz_tilt_up: 10 #dpad on ps4 is an axis

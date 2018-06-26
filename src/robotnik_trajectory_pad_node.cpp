@@ -35,6 +35,8 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
 #include <std_msgs/Int32.h>
+#include <std_msgs/Bool.h>
+#include <std_srvs/SetBool.h>
 #include <unistd.h>
 #include <robotnik_trajectory_pad/CartesianEuler.h>
 #include <diagnostic_updater/diagnostic_updater.h>
@@ -71,9 +73,13 @@ class RobotnikTrajectoryPad
 	RobotnikTrajectoryPad();
 	
 	void Update();
+	bool srv_setAngleMode(std_srvs::SetBool::Request &request, std_srvs::SetBool::Response &response);
+	bool angle_A_mode;
+	
 
 	private:
 	void padCallback(const sensor_msgs::Joy::ConstPtr& joy);
+	void angleCallback(const std_msgs::Bool::ConstPtr& mode);
 	ros::NodeHandle nh_;
 	ros::NodeHandle pnh_;
 
@@ -83,6 +89,8 @@ class RobotnikTrajectoryPad
 	ros::Publisher pad_pub_;
 	//! It will be suscribed to the joystick
 	ros::Subscriber pad_sub_;
+	//! Subscribed to the rqt
+	ros:: Subscriber rqt_kuka_sub_;
 	//! Name of the topic where it will be publishing the cartesianeuler moves
 	std::string cartesian_topic_name_;
 
@@ -99,6 +107,7 @@ class RobotnikTrajectoryPad
 	int button_output_1_, button_output_2_;
 	int output_1_, output_2_;
 	bool bOutput1, bOutput2;
+	int button_angle_deadman_;
 	//! button to start the homing service
 	int button_home_;
 	//! Number of buttons of the joystick
@@ -133,6 +142,9 @@ class RobotnikTrajectoryPad
 	std::string joystick_dead_zone_;
 	//! Flag to enable the ptz control via axes
 	bool ptz_control_by_axes_;
+	
+		
+
 };
 
 RobotnikTrajectoryPad::RobotnikTrajectoryPad():
@@ -159,6 +171,7 @@ RobotnikTrajectoryPad::RobotnikTrajectoryPad():
 	pnh_.param("button_speed_up", speed_up_button_, speed_up_button_);  //4 Thrustmaster
 	pnh_.param("button_speed_down", speed_down_button_, speed_down_button_); //5 Thrustmaster
 	pnh_.param("button_euler_mode", button_euler_mode_, button_euler_mode_); //euler or cartesian
+	pnh_.param("button_angle_deadman", button_angle_deadman_, button_angle_deadman_); //deadman for the angle A of the robot
 	pnh_.param<std::string>("joystick_dead_zone", joystick_dead_zone_, "true");
 	
 	pnh_.param("max_axis_step", max_axis_step_, MAX_AXIS_STEP); 
@@ -181,6 +194,9 @@ RobotnikTrajectoryPad::RobotnikTrajectoryPad():
 	// (these are the references that we will sent to summit_xl_controller/command)
 	pad_sub_ = nh_.subscribe<sensor_msgs::Joy>("joy", 10, &RobotnikTrajectoryPad::padCallback, this);
 	
+	//Listen to the rqt of the kuka to check activation of the movement of angle A
+	//rqt_kuka_sub_=nh_.subscribe<std_msgs::Bool>("/kuka_rqt/angle_mode",10,&RobotnikTrajectoryPad::angleCallback,this);
+	
 	// Diagnostics
 	updater_pad.setHardwareID("None");
 	// Topics freq control 
@@ -195,6 +211,8 @@ RobotnikTrajectoryPad::RobotnikTrajectoryPad():
 
 	bEnable = false;	// Communication flag disabled by default
 	last_command_ = true;
+	angle_A_mode=true; //de momento por defecto a true
+
 	
 }
 
@@ -207,8 +225,16 @@ RobotnikTrajectoryPad::RobotnikTrajectoryPad():
 void RobotnikTrajectoryPad::Update(){
 	updater_pad.update();
 }
-
-
+/*
+void RobotnikTrajectoryPad::angleCallback(const std_msgs::Bool::ConstPtr& mode)
+{
+	if(mode->data==false){
+		angle_A_mode=false;
+	}else if(mode->data==true){
+		angle_A_mode=true;
+	}
+}
+*/
 void RobotnikTrajectoryPad::padCallback(const sensor_msgs::Joy::ConstPtr& joy)
 {
 
@@ -260,13 +286,13 @@ void RobotnikTrajectoryPad::padCallback(const sensor_msgs::Joy::ConstPtr& joy)
 		}
 		
 		// EULER MODE
-		if(joy->buttons[button_euler_mode_] == 1){
+		if(joy->buttons[button_angle_deadman_] == 1 && angle_A_mode==true){ 
 			cartesian_msg.x = 0.0; 
 			cartesian_msg.y = 0.0;
 			cartesian_msg.z = 0.0;
 
-			cartesian_msg.pitch = current_step * a_scale_*joy->axes[linear_x_];
-			cartesian_msg.roll = current_step * a_scale_*joy->axes[linear_y_];
+			cartesian_msg.pitch = 0.0;//current_step * a_scale_*joy->axes[linear_x_];
+			cartesian_msg.roll = 0.0;//current_step * a_scale_*joy->axes[linear_y_];
 			cartesian_msg.yaw = current_step * a_scale_*joy->axes[linear_z_];
 
 		}else{
@@ -318,7 +344,7 @@ void RobotnikTrajectoryPad::padCallback(const sensor_msgs::Joy::ConstPtr& joy)
 		last_command_ = false;
 	}	
 		
-		
+		//ROS_INFO("angle mode %d", angle_A_mode);	
 
 	/*		
 		
@@ -327,13 +353,24 @@ void RobotnikTrajectoryPad::padCallback(const sensor_msgs::Joy::ConstPtr& joy)
 */
     	
 }
-
+bool RobotnikTrajectoryPad::srv_setAngleMode(std_srvs::SetBool::Request &request, std_srvs::SetBool::Response &response){
+	if(request.data==true){
+		angle_A_mode=true;
+		response.success=true;
+	}else if(request.data==false){
+		angle_A_mode=false;
+		response.success=true;
+	}
+	
+	return true;
+	}
 ///////////////////////// MAIN /////////////////////////////////
 int main(int argc, char** argv)
 {
 	ros::init(argc, argv, "robotnik_trajectory_pad");
+	ros::NodeHandle n;
 	RobotnikTrajectoryPad robotnik_trajectory_pad;
-
+	ros::ServiceServer set_angle_mode=n.advertiseService("/kuka_tool_finger_node/set_angle_mode",&RobotnikTrajectoryPad::srv_setAngleMode, &robotnik_trajectory_pad);
 	ros::Rate r(50.0);
 
 	while( ros::ok() ){
