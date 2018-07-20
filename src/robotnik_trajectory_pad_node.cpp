@@ -39,6 +39,7 @@
 #include <std_srvs/SetBool.h>
 #include <unistd.h>
 #include <robotnik_trajectory_pad/CartesianEuler.h>
+#include <kuka_rsi_cartesian_hw_interface/set_A1_A6.h>
 #include <diagnostic_updater/diagnostic_updater.h>
 #include <diagnostic_updater/publisher.h>
 
@@ -93,6 +94,7 @@ class RobotnikTrajectoryPad
 	ros:: Subscriber rqt_kuka_sub_;
 	//! Name of the topic where it will be publishing the cartesianeuler moves
 	std::string cartesian_topic_name_;
+	std::string joint_topic_name_;
 
 	double current_step;
 	//! Pad type
@@ -108,6 +110,7 @@ class RobotnikTrajectoryPad
 	int output_1_, output_2_;
 	bool bOutput1, bOutput2;
 	int button_angle_deadman_;
+	int button_joint_deadman_;
 	//! button to start the homing service
 	int button_home_;
 	//! Number of buttons of the joystick
@@ -153,6 +156,7 @@ RobotnikTrajectoryPad::RobotnikTrajectoryPad():
 	
 	current_step = 0.01;
 	cartesian_topic_name_="cartesian_move";
+	//joint_topic_name_="joint_move";
 
 	//JOYSTICK PAD TYPE
 	pnh_.param<std::string>("pad_type",pad_type_,"ps3");
@@ -167,11 +171,13 @@ RobotnikTrajectoryPad::RobotnikTrajectoryPad():
 	pnh_.param("scale_linear", l_scale_, DEFAULT_SCALE_LINEAR);
 	pnh_.param("scale_linear_z", l_scale_z_, DEFAULT_SCALE_LINEAR_Z);
 	pnh_.param("cartesian_topic_name", cartesian_topic_name_, cartesian_topic_name_);
+	pnh_.param("joint_topic_name", joint_topic_name_, joint_topic_name_);
 	pnh_.param("button_dead_man", dead_man_button_, dead_man_button_);
 	pnh_.param("button_speed_up", speed_up_button_, speed_up_button_);  //4 Thrustmaster
 	pnh_.param("button_speed_down", speed_down_button_, speed_down_button_); //5 Thrustmaster
 	pnh_.param("button_euler_mode", button_euler_mode_, button_euler_mode_); //euler or cartesian
 	pnh_.param("button_angle_deadman", button_angle_deadman_, button_angle_deadman_); //deadman for the angle A of the robot
+	pnh_.param("button_joint_mode", button_joint_deadman_, button_joint_deadman_);
 	pnh_.param<std::string>("joystick_dead_zone", joystick_dead_zone_, "true");
 	
 	pnh_.param("max_axis_step", max_axis_step_, MAX_AXIS_STEP); 
@@ -189,6 +195,7 @@ RobotnikTrajectoryPad::RobotnikTrajectoryPad():
 
 	// Publish through the node handle CartesianEuler type messages to the topic
 	pad_pub_ = nh_.advertise<robotnik_trajectory_pad::CartesianEuler>(cartesian_topic_name_, 1);
+	
 	
 	// Listen through the node handle sensor_msgs::Joy messages from joystick 
 	// (these are the references that we will sent to summit_xl_controller/command)
@@ -239,7 +246,7 @@ void RobotnikTrajectoryPad::padCallback(const sensor_msgs::Joy::ConstPtr& joy)
 {
 
 	robotnik_trajectory_pad::CartesianEuler cartesian_msg;
-
+        
 	cartesian_msg.x = 0.0;
 	cartesian_msg.y = 0.0;
 	cartesian_msg.z = 0.0;
@@ -286,14 +293,22 @@ void RobotnikTrajectoryPad::padCallback(const sensor_msgs::Joy::ConstPtr& joy)
 		}
 		
 		// EULER MODE
-		if(joy->buttons[button_angle_deadman_] == 1 && angle_A_mode==true){ 
-			cartesian_msg.x = 0.0; 
-			cartesian_msg.y = 0.0;
-			cartesian_msg.z = 0.0;
+		if(joy->buttons[button_angle_deadman_] == 1){
+			if(angle_A_mode==true){ 
+				cartesian_msg.x = 0.0; 
+				cartesian_msg.y = 0.0;
+				cartesian_msg.z = 0.0;
 
-			cartesian_msg.pitch = 0.0;//current_step * a_scale_*joy->axes[linear_x_];
-			cartesian_msg.roll = 0.0;//current_step * a_scale_*joy->axes[linear_y_];
-			cartesian_msg.yaw = current_step * a_scale_*joy->axes[linear_z_];
+				cartesian_msg.pitch = 0.0;//current_step * a_scale_*joy->axes[linear_x_];
+				cartesian_msg.roll = 0.0;//current_step * a_scale_*joy->axes[linear_y_];
+				cartesian_msg.yaw = current_step * a_scale_*joy->axes[linear_z_];
+                                
+			}
+                        if(joy->buttons[button_euler_mode_] == 1){ //for moving axis
+                                cartesian_msg.pitch = current_step * a_scale_*joy->axes[linear_x_];
+				cartesian_msg.roll = current_step * a_scale_*joy->axes[linear_y_];
+				cartesian_msg.yaw = 0.0;//current_step * a_scale_*joy->axes[linear_z_];
+                                }
 
 		}else{
 		// CARTESIAN MODE
@@ -325,8 +340,7 @@ void RobotnikTrajectoryPad::padCallback(const sensor_msgs::Joy::ConstPtr& joy)
 		pad_pub_.publish(cartesian_msg);
 		pub_command_freq->tick();
 		last_command_ = true;
-	}
-		
+	}	
 		
 	if(!bEnable && last_command_){
 		//if (ptzEvent) ptz_pub_.publish(ptz);
@@ -339,6 +353,7 @@ void RobotnikTrajectoryPad::padCallback(const sensor_msgs::Joy::ConstPtr& joy)
 		cartesian_msg.yaw = 0.0;
 		
 		pad_pub_.publish(cartesian_msg);
+		
 		
 		pub_command_freq->tick();
 		last_command_ = false;
