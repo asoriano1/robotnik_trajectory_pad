@@ -75,7 +75,9 @@ class RobotnikTrajectoryPad
 	
 	void Update();
 	bool srv_setAngleMode(std_srvs::SetBool::Request &request, std_srvs::SetBool::Response &response);
+        bool srv_setDeadmanMode(std_srvs::SetBool::Request &request, std_srvs::SetBool::Response &response);
 	bool angle_A_mode;
+        bool deadMan_mode;
 	
 
 	private:
@@ -219,7 +221,7 @@ RobotnikTrajectoryPad::RobotnikTrajectoryPad():
 	bEnable = false;	// Communication flag disabled by default
 	last_command_ = true;
 	angle_A_mode=true; //de momento por defecto a true
-
+        deadMan_mode=true; //de momento por defecto a true
 	
 }
 
@@ -254,10 +256,14 @@ void RobotnikTrajectoryPad::padCallback(const sensor_msgs::Joy::ConstPtr& joy)
 	cartesian_msg.roll = 0.0;
 	cartesian_msg.yaw = 0.0;
 	
-	bEnable = (joy->buttons[dead_man_button_] == 1);
+        if(deadMan_mode){
+                bEnable = (joy->buttons[dead_man_button_] == 1);
+        }else if(!deadMan_mode){
+                bEnable = true;
+        }
 
 	// Actions dependant on dead-man button
- 	if (joy->buttons[dead_man_button_] == 1) {
+ 	if (joy->buttons[dead_man_button_] == 1 || !deadMan_mode) {
 		//ROS_ERROR("SummitXLPad::padCallback: DEADMAN button %d", dead_man_button_);
 		//Set the current velocity level
 		if ( joy->buttons[speed_down_button_] == 1 ){
@@ -368,12 +374,25 @@ void RobotnikTrajectoryPad::padCallback(const sensor_msgs::Joy::ConstPtr& joy)
 */
     	
 }
+//Service to able/disable the movement of the angle A of the robot
 bool RobotnikTrajectoryPad::srv_setAngleMode(std_srvs::SetBool::Request &request, std_srvs::SetBool::Response &response){
 	if(request.data==true){
 		angle_A_mode=true;
 		response.success=true;
 	}else if(request.data==false){
 		angle_A_mode=false;
+		response.success=true;
+	}
+	
+	return true;
+	}
+//Service to able/disable the deadMan for the movement of the robot
+bool RobotnikTrajectoryPad::srv_setDeadmanMode(std_srvs::SetBool::Request &request, std_srvs::SetBool::Response &response){
+	if(request.data==true){
+		deadMan_mode=true;
+		response.success=true;
+	}else if(request.data==false){
+		deadMan_mode=false;
 		response.success=true;
 	}
 	
@@ -386,6 +405,7 @@ int main(int argc, char** argv)
 	ros::NodeHandle n;
 	RobotnikTrajectoryPad robotnik_trajectory_pad;
 	ros::ServiceServer set_angle_mode=n.advertiseService("/kuka_tool_finger_node/set_angle_mode",&RobotnikTrajectoryPad::srv_setAngleMode, &robotnik_trajectory_pad);
+        ros::ServiceServer srv_set_DeadMan_mode=n.advertiseService("/kuka_tool_finger_node/set_deadMan_mode",&RobotnikTrajectoryPad::srv_setDeadmanMode, &robotnik_trajectory_pad);
 	ros::Rate r(50.0);
 
 	while( ros::ok() ){
