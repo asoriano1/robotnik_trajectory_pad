@@ -203,8 +203,6 @@ RobotnikTrajectoryPad::RobotnikTrajectoryPad():
 	// (these are the references that we will sent to summit_xl_controller/command)
 	pad_sub_ = nh_.subscribe<sensor_msgs::Joy>("joy", 10, &RobotnikTrajectoryPad::padCallback, this);
 	
-	//Listen to the rqt of the kuka to check activation of the movement of angle A
-	//rqt_kuka_sub_=nh_.subscribe<std_msgs::Bool>("/kuka_rqt/angle_mode",10,&RobotnikTrajectoryPad::angleCallback,this);
 	
 	// Diagnostics
 	updater_pad.setHardwareID("None");
@@ -234,16 +232,6 @@ RobotnikTrajectoryPad::RobotnikTrajectoryPad():
 void RobotnikTrajectoryPad::Update(){
 	updater_pad.update();
 }
-/*
-void RobotnikTrajectoryPad::angleCallback(const std_msgs::Bool::ConstPtr& mode)
-{
-	if(mode->data==false){
-		angle_A_mode=false;
-	}else if(mode->data==true){
-		angle_A_mode=true;
-	}
-}
-*/
 void RobotnikTrajectoryPad::padCallback(const sensor_msgs::Joy::ConstPtr& joy)
 {
 
