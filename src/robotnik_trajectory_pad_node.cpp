@@ -156,7 +156,7 @@ RobotnikTrajectoryPad::RobotnikTrajectoryPad():
   pnh_("~")
 {	
 	
-	current_step = 0.01;
+	current_step = 0.01*8;
 	cartesian_topic_name_="cartesian_move";
 	//joint_topic_name_="joint_move";
 
