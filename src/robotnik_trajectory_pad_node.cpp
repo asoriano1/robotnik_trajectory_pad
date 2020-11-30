@@ -288,21 +288,21 @@ void RobotnikTrajectoryPad::padCallback(const sensor_msgs::Joy::ConstPtr& joy)
 		
 		// EULER MODE
 		if(joy->buttons[button_angle_deadman_] == 1){
-			if(angle_A_mode==true){ 
+			 if(angle_A_mode==true){ 
 				cartesian_msg.x = 0.0; 
 				cartesian_msg.y = 0.0;
 				cartesian_msg.z = 0.0;
 
 				cartesian_msg.pitch = 0.0;//current_step * a_scale_*joy->axes[linear_x_];
 				cartesian_msg.roll = 0.0;//current_step * a_scale_*joy->axes[linear_y_];
-				cartesian_msg.yaw = current_step * a_scale_*joy->axes[linear_z_];
+				cartesian_msg.yaw = current_step * a_scale_*joy->axes[angular_];
                                 
-			}
-                        if(joy->buttons[button_euler_mode_] == 1){ //for moving axis
-                                cartesian_msg.pitch = current_step * a_scale_*joy->axes[linear_x_];
-				cartesian_msg.roll = current_step * a_scale_*joy->axes[linear_y_];
-				cartesian_msg.yaw = 0.0;//current_step * a_scale_*joy->axes[linear_z_];
-                                }
+			 }
+                       // if(joy->buttons[button_euler_mode_] == 1){ //for moving axis
+                         //       cartesian_msg.pitch = current_step * a_scale_*joy->axes[linear_x_];
+			//	cartesian_msg.roll = current_step * a_scale_*joy->axes[linear_y_];
+			//	cartesian_msg.yaw = 0.0;//current_step * a_scale_*joy->axes[linear_z_];
+                          //      }
 
 		}else{
 		// CARTESIAN MODE
