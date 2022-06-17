@@ -246,7 +246,7 @@ void RobotnikTrajectoryPad::padCallback(const sensor_msgs::Joy::ConstPtr& joy)
 	
         if(deadMan_mode){
                 bEnable = (joy->buttons[dead_man_button_] == 1);
-        }else if(!deadMan_mode){
+        }else if(!deadMan_mode && joy->buttons[button_euler_mode_] == 0 ){
                 bEnable = true;
         }
 
@@ -295,7 +295,7 @@ void RobotnikTrajectoryPad::padCallback(const sensor_msgs::Joy::ConstPtr& joy)
 
 				cartesian_msg.pitch = 0.0;//current_step * a_scale_*joy->axes[linear_x_];
 				cartesian_msg.roll = 0.0;//current_step * a_scale_*joy->axes[linear_y_];
-				cartesian_msg.yaw = current_step * a_scale_*joy->axes[angular_];
+				cartesian_msg.yaw = 0.06 * a_scale_*joy->axes[angular_];
                                 
 			 }
                        // if(joy->buttons[button_euler_mode_] == 1){ //for moving axis
