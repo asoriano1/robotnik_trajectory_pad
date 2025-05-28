@@ -55,7 +55,7 @@ RobotnikTrajectoryPad::RobotnikTrajectoryPad(ros::NodeHandle& nh, ros::NodeHandl
     pnh_.param("axis_angular", angular_, 1);
 
     pnh_.param("scale_angular", a_scale_, 0.05);
-    pnh_.param("scale_linear", l_scale_, 1.0);
+    pnh_.param("scale_linear", l_scale_, -1.0);
     pnh_.param("scale_linear_z", l_scale_z_, 1.0);
 
     pnh_.param("cartesian_topic_name", cartesian_topic_name_, std::string("cartesian_move"));
@@ -155,10 +155,10 @@ void RobotnikTrajectoryPad::processSpeedButtons(const sensor_msgs::Joy::ConstPtr
     // SPEED DOWN
     if (joy->buttons[speed_down_button_] == 1) {
         if(!bRegisteredButtonEvent[speed_down_button_]) {
-            if(current_step_ > 0.001) {
+            if(current_step_ > 0.01) {
                 current_step_ -= 0.01;
                 bRegisteredButtonEvent[speed_down_button_] = true;
-                ROS_INFO("Decreasing step: %.1f%%", current_step_ * 100.0);
+                ROS_INFO("Decreasing step: %.1f%%", current_step_ * 550);
             }
         }
     } else {
@@ -168,10 +168,10 @@ void RobotnikTrajectoryPad::processSpeedButtons(const sensor_msgs::Joy::ConstPtr
     // SPEED UP
     if (joy->buttons[speed_up_button_] == 1) {
         if(!bRegisteredButtonEvent[speed_up_button_]) {
-            if(current_step_ <= 0.9) {
+            if(current_step_ <= 0.18 ) {
                 current_step_ += 0.01;
                 bRegisteredButtonEvent[speed_up_button_] = true;
-                ROS_INFO("Increasing step: %.1f%%", current_step_ * 100.0);
+                ROS_INFO("Increasing step: %.1f%%", current_step_ * 550);
             }
         }
     } else {
@@ -200,7 +200,7 @@ void RobotnikTrajectoryPad::publishCartesianMsg(const sensor_msgs::Joy::ConstPtr
             // Modo cartesiano
             cartesian_msg.x = current_step_ * l_scale_ * joy->axes[linear_x_];
             cartesian_msg.y = current_step_ * l_scale_ * joy->axes[linear_y_];
-            cartesian_msg.z = current_step_ * l_scale_ * joy->axes[linear_z_];
+            cartesian_msg.z = current_step_ * l_scale_z_ * joy->axes[linear_z_];
         }
     }
 
