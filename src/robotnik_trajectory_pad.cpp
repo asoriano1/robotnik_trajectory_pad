@@ -71,7 +71,9 @@ RobotnikTrajectoryPad::RobotnikTrajectoryPad(ros::NodeHandle& nh, ros::NodeHandl
     pnh_.param("max_axis_step", max_axis_step_, 0.1);
     pnh_.param("max_joint_step", max_joint_step_, 0.1);
 
-    current_step_ = 0.08; // Por ejemplo
+    current_step_ = 0.10; // Por ejemplo
+    
+    itowa_pad_ = false;
 
     // Inicialización arrays de botones
     for(int i = 0; i < 16; ++i) {
@@ -83,9 +85,11 @@ RobotnikTrajectoryPad::RobotnikTrajectoryPad(ros::NodeHandle& nh, ros::NodeHandl
 
     // Publisher
     pad_pub_ = nh_.advertise<robotnik_trajectory_pad::CartesianEuler>(cartesian_topic_name_, 1);
+    pad_vel_pub_ = nh.advertise<std_msgs::Float64>("pad_vel", 10);
 
     // Subscriber
     pad_sub_ = nh_.subscribe<sensor_msgs::Joy>("joy", 10, &RobotnikTrajectoryPad::padCallback, this);
+    mux_sub_ = nh_.subscribe<std_msgs::String>("/mux_joy/selected", 1, &RobotnikTrajectoryPad::muxCallback, this);
 
     // Services
     srv_set_angle_mode_ = nh_.advertiseService("/kuka_tool_finger_node/set_angle_mode", 
@@ -103,6 +107,10 @@ RobotnikTrajectoryPad::RobotnikTrajectoryPad(ros::NodeHandle& nh, ros::NodeHandl
                            diagnostic_updater::FrequencyStatusParam(&min_freq_joy_, &max_freq_joy_, 0.1, 10));
     pub_command_freq_ = new diagnostic_updater::HeaderlessTopicDiagnostic(cartesian_topic_name_.c_str(), updater_pad_,
                            diagnostic_updater::FrequencyStatusParam(&min_freq_command_, &max_freq_command_, 0.1, 10));
+
+    std_msgs::Float64 vel_msg;
+    vel_msg.data = current_step_ * 500;
+    pad_vel_pub_.publish(vel_msg);
 }
 
 void RobotnikTrajectoryPad::Update()
@@ -150,15 +158,27 @@ void RobotnikTrajectoryPad::padCallback(const sensor_msgs::Joy::ConstPtr& joy)
     }
 }
 
+void RobotnikTrajectoryPad::muxCallback(const std_msgs::String::ConstPtr& msg)
+{
+    // Determina si el itowa está activo
+    if(msg->data == "/kuka_pad/itowa_joy") {
+        itowa_pad_ = true;
+    } else {
+        itowa_pad_ = false;
+    }
+}
+
 void RobotnikTrajectoryPad::processSpeedButtons(const sensor_msgs::Joy::ConstPtr& joy)
 {
+    std_msgs::Float64 msg;
+    
     // SPEED DOWN
     if (joy->buttons[speed_down_button_] == 1) {
         if(!bRegisteredButtonEvent[speed_down_button_]) {
             if(current_step_ > 0.01) {
-                current_step_ -= 0.01;
+                current_step_ -= 0.05;
                 bRegisteredButtonEvent[speed_down_button_] = true;
-                ROS_INFO("Decreasing step: %.1f%%", current_step_ * 550);
+                ROS_INFO("Decreasing step: %.1f%%", current_step_ * 500);
             }
         }
     } else {
@@ -168,15 +188,19 @@ void RobotnikTrajectoryPad::processSpeedButtons(const sensor_msgs::Joy::ConstPtr
     // SPEED UP
     if (joy->buttons[speed_up_button_] == 1) {
         if(!bRegisteredButtonEvent[speed_up_button_]) {
-            if(current_step_ <= 0.18 ) {
-                current_step_ += 0.01;
+            if(current_step_ <= 0.10 ) {
+                current_step_ += 0.05;
                 bRegisteredButtonEvent[speed_up_button_] = true;
-                ROS_INFO("Increasing step: %.1f%%", current_step_ * 550);
+                ROS_INFO("Increasing step: %.1f%%", current_step_ * 500);
             }
         }
     } else {
         bRegisteredButtonEvent[speed_up_button_] = false;
     }
+    std_msgs::Float64 vel_msg;
+    vel_msg.data = current_step_ * 500;
+    pad_vel_pub_.publish(vel_msg);
+
 }
 
 void RobotnikTrajectoryPad::publishCartesianMsg(const sensor_msgs::Joy::ConstPtr& joy)
@@ -198,9 +222,13 @@ void RobotnikTrajectoryPad::publishCartesianMsg(const sensor_msgs::Joy::ConstPtr
             cartesian_msg.yaw = 0.06 * a_scale_ * joy->axes[angular_];
         } else {
             // Modo cartesiano
-            cartesian_msg.x = current_step_ * l_scale_ * joy->axes[linear_x_];
-            cartesian_msg.y = current_step_ * l_scale_ * joy->axes[linear_y_];
-            cartesian_msg.z = current_step_ * l_scale_z_ * joy->axes[linear_z_];
+            if(itowa_pad_ && joy->buttons[button_euler_mode_] == 1){
+
+            }else{
+                cartesian_msg.x = current_step_ * l_scale_ * joy->axes[linear_x_];
+                cartesian_msg.y = current_step_ * l_scale_ * joy->axes[linear_y_];
+                cartesian_msg.z = current_step_ * l_scale_z_ * joy->axes[linear_z_];
+            }
         }
     }
 

@@ -37,10 +37,12 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
 #include <std_msgs/Bool.h>
+#include <std_msgs/String.h>
 #include <std_srvs/SetBool.h>
 #include <robotnik_trajectory_pad/CartesianEuler.h>
 #include <diagnostic_updater/diagnostic_updater.h>
 #include <diagnostic_updater/publisher.h>
+#include <std_msgs/Float64.h>
 
 class RobotnikTrajectoryPad
 {
@@ -61,6 +63,7 @@ public:
 private:
     // Callbacks
     void padCallback(const sensor_msgs::Joy::ConstPtr& joy);
+    void muxCallback(const std_msgs::String::ConstPtr& msg);
 
     // Métodos internos de ayuda
     void processSpeedButtons(const sensor_msgs::Joy::ConstPtr& joy);
@@ -70,7 +73,9 @@ private:
     ros::NodeHandle nh_;
     ros::NodeHandle pnh_;
     ros::Publisher pad_pub_;
+    ros::Publisher pad_vel_pub_;
     ros::Subscriber pad_sub_;
+    ros::Subscriber mux_sub_;
 
     // Services
     ros::ServiceServer srv_set_angle_mode_;
@@ -91,6 +96,7 @@ private:
     bool deadMan_mode_;
     bool bEnable;
     bool last_command_;
+    bool itowa_pad_;
 
     // Otras variables
     bool bRegisteredButtonEvent[16];  // Ejemplo, ajusta a tus necesidades
