@@ -175,7 +175,7 @@ void RobotnikTrajectoryPad::processSpeedButtons(const sensor_msgs::Joy::ConstPtr
     // SPEED DOWN
     if (joy->buttons[speed_down_button_] == 1) {
         if(!bRegisteredButtonEvent[speed_down_button_]) {
-            if(current_step_ > 0.01) {
+            if(current_step_ >= 0.10) {
                 current_step_ -= 0.05;
                 bRegisteredButtonEvent[speed_down_button_] = true;
                 ROS_INFO("Decreasing step: %.1f%%", current_step_ * 500);
@@ -188,7 +188,7 @@ void RobotnikTrajectoryPad::processSpeedButtons(const sensor_msgs::Joy::ConstPtr
     // SPEED UP
     if (joy->buttons[speed_up_button_] == 1) {
         if(!bRegisteredButtonEvent[speed_up_button_]) {
-            if(current_step_ <= 0.10 ) {
+            if(current_step_ < 0.2 ) {
                 current_step_ += 0.05;
                 bRegisteredButtonEvent[speed_up_button_] = true;
                 ROS_INFO("Increasing step: %.1f%%", current_step_ * 500);
